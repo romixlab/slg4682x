@@ -2,5 +2,18 @@
 name = "slg4682x"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/romixlab/slg4682x"
+description = "SLG46824 and SLG46826 Mixed-Signal Matrix HAL with support for reading, programming and real time rewiring of the matrix."
 
 [dependencies]
+embedded-hal = "1.0"
+bitfield-struct = "0.12"
+
+[features]
+default = ["std"]
+std = []
+
+[dev-dependencies]
+anyhow = "1.0"
+usb4604 = { path = "../usb4604" }
