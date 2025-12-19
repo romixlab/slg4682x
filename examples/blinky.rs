@@ -1,6 +1,6 @@
 use anyhow::Result;
 use slg4682x::i2c_comm::Slg46824x;
-use usb4604::{I2c, Level, Operation, Pio, Usb4604};
+use usb4604::{Level, Pio, Usb4604};
 
 fn main() -> Result<()> {
     let usb4604 = Usb4604::open_auto()?;
@@ -11,7 +11,7 @@ fn main() -> Result<()> {
     let i2c = usb4604.i2c_bridge()?;
     let mut slg = Slg46824x::new(i2c, 1).expect("");
 
-    let mut data = [0u8; 16];
+    let mut data = [0u8; 256];
     slg.read_nvm(0, &mut data)?;
     println!("data: {data:02x?}");
 
