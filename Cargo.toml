@@ -1,6 +1,6 @@
 [package]
 name = "slg4682x"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/romixlab/slg4682x"
@@ -16,5 +16,5 @@ std = []
 
 [dev-dependencies]
 anyhow = "1.0"
-usb4604 = { path = "../usb4604" }
+usb4604 = "0.2"
 ihex = "3.0"
