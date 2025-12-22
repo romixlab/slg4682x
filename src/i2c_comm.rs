@@ -50,7 +50,7 @@ impl<I2C: I2c> Slg46824x<I2C> {
         Ok(())
     }
 
-    pub fn write_masked(
+    pub fn write_ram_masked(
         &mut self,
         bit_range: RangeInclusive<usize>,
         value: u8,
@@ -86,6 +86,48 @@ impl<I2C: I2c> Slg46824x<I2C> {
             self.i2c.write(self.ram_addr(), &[lo_byte, lo_value])?;
         }
         Ok(())
+    }
+
+    pub fn read_ram_masked(
+        &mut self,
+        bit_range: RangeInclusive<usize>,
+    ) -> Result<u8, Error<I2C::Error>> {
+        self.read_masked(bit_range, self.ram_addr())
+    }
+
+    pub fn read_nvm_masked(
+        &mut self,
+        bit_range: RangeInclusive<usize>,
+    ) -> Result<u8, Error<I2C::Error>> {
+        self.read_masked(bit_range, self.nvm_addr())
+    }
+
+    fn read_masked(
+        &mut self,
+        bit_range: RangeInclusive<usize>,
+        addr: u8,
+    ) -> Result<u8, Error<I2C::Error>> {
+        let msb_global = *bit_range.start();
+        let lsb_global = *bit_range.end();
+        debug_assert!(msb_global > lsb_global);
+        debug_assert!(msb_global - lsb_global + 1 <= 8);
+
+        let hi_byte = (msb_global / 8) as u8;
+        let msb = msb_global % 8; // 0..=7, msb:0 in hi byte
+        let lo_byte = (lsb_global / 8) as u8;
+        let lsb = lsb_global % 8; // 0..=7, 7:lsb in lo byte
+        if hi_byte == lo_byte {
+            let mut value = [0u8; 1];
+            self.i2c.write_read(addr, &[lo_byte], &mut value)?;
+            let value = value[0] >> lsb;
+            Ok(value & (0xFF >> (7 - msb)))
+        } else {
+            let mut value = [0u8; 2];
+            self.i2c.write_read(addr, &[lo_byte], &mut value)?;
+            let hi_value = value[1];
+            let lo_value = value[0];
+            Ok((hi_value << (7 - msb)) | (lo_value >> lsb))
+        }
     }
 
     fn ram_addr(&self) -> u8 {
@@ -173,39 +215,39 @@ mod tests {
     fn write_masked() {
         let mut slg = Slg46824x::new_default(I2cMock::default());
 
-        slg.write_masked(7..=0, 0xAA).unwrap();
+        slg.write_ram_masked(7..=0, 0xAA).unwrap();
         assert_eq!(slg.i2c.pop_front().as_slice(), &[0, 0xAA]);
         assert!(slg.i2c.writes.is_empty());
 
-        slg.write_masked(15..=8, 0xAA).unwrap();
+        slg.write_ram_masked(15..=8, 0xAA).unwrap();
         assert_eq!(slg.i2c.pop_front().as_slice(), &[1, 0xAA]);
         assert!(slg.i2c.writes.is_empty());
 
-        slg.write_masked(6..=1, 0xAA).unwrap();
+        slg.write_ram_masked(6..=1, 0xAA).unwrap();
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b1000_0001]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[0, 0xAA]);
         assert!(slg.i2c.writes.is_empty());
 
-        slg.write_masked(14..=9, 0xAA).unwrap();
+        slg.write_ram_masked(14..=9, 0xAA).unwrap();
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b1000_0001]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[1, 0xAA]);
         assert!(slg.i2c.writes.is_empty());
 
-        slg.write_masked(11..=6, 0b0010_0101).unwrap();
+        slg.write_ram_masked(11..=6, 0b0010_0101).unwrap();
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b1111_0000]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[1, 0b0000_1001]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b0011_1111]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[0, 0b0100_0000]);
         assert!(slg.i2c.writes.is_empty());
 
-        slg.write_masked(8..=1, 0b1010_0101).unwrap();
+        slg.write_ram_masked(8..=1, 0b1010_0101).unwrap();
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b1111_1110]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[1, 0b0000_0001]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b0000_0001]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[0, 0b0100_1010]);
         assert!(slg.i2c.writes.is_empty());
 
-        slg.write_masked(14..=7, 0b1010_0101).unwrap();
+        slg.write_ram_masked(14..=7, 0b1010_0101).unwrap();
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b1000_0000]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[1, 0b0101_0010]);
         assert_eq!(slg.i2c.pop_front().as_slice(), &[MASK_REG, 0b0111_1111]);
