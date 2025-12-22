@@ -17,3 +17,4 @@ std = []
 [dev-dependencies]
 anyhow = "1.0"
 usb4604 = { path = "../usb4604" }
+ihex = "3.0"
