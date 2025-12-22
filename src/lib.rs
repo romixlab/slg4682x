@@ -2,7 +2,10 @@
 
 use core::fmt::{Debug, Display, Formatter};
 
+mod hal;
 pub mod i2c_comm;
+pub mod matrix_input;
+pub mod matrix_output;
 
 #[derive(Debug)]
 pub enum Error<E> {
